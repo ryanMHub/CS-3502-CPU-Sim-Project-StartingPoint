@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
@@ -460,6 +461,106 @@ Instructions:
             }
             
             return processResults.Values.OrderBy(r => r.StartTime).ToList();
+        }
+
+        //TODO: This is the first Algo I added
+        /// <summary>
+        /// Professor: SRTF algorithm implementation using DataGrid data
+        /// SRTF Stands for Shortest Remaining Time First. This algo builds on 
+        /// SJF, but it is preemptive, if a new process arrives thats and it's 
+        /// total time needed is shorter than the current process. The current
+        /// process will go into a ready queue. And then the shorter process 
+        /// will execute.
+        /// </summary>
+        private List<SchedulingResult> RunSRTFAlgorithm(List<ProcessData> processes)
+        {
+            //Declare and instantiate datastructures to track processes
+            var processResults = new Dictionary<string, SchedulingResult>(); //process final output row
+            var remainBurstTimes = new Dictionary<string, int>(); //required time for each process to finish
+            var completed = new HashSet<string>(); //completed processes
+
+            //counters & clock
+            int currTime = 0; //cpu clock
+            int completedCount = 0; //quantity of processes completed
+            int totalProcesses = processes.Count; //Starting quantity of processes
+
+            //Initialize all processes
+            foreach (var process in processes)
+            {
+                remainBurstTimes[process.ProcessID] = process.BurstTime; //set initial burst time
+
+                //initialize the starting SchedulingResult for each process
+                processResults[process.ProcessID] = new SchedulingResult
+                {
+                    ProcessID = process.ProcessID,
+                    ArrivalTime = process.ArrivalTime,
+                    BurstTime = process.BurstTime,
+                    StartTime = -1, //Flag signals unstarted process
+                    FinishTime = 0,
+                    WaitingTime = 0,
+                    TurnaroundTime = 0
+                };
+
+            }
+
+            //start the time based on the earliest arrival time
+            if(processes.Count > 0)
+            {
+                currTime = processes.Min(p => p.ArrivalTime);
+            }
+
+            //Primary Loop -> Continue until all processes completed
+            while(completedCount < totalProcesses)
+            {
+                //Most important part gathers all processes that are available for processesing
+                //This is the primary action of this algorithm
+                var availProcesses = processes
+                    .Where(p => p.ArrivalTime <= currTime //make sure the arrival time of the process is less than or equal to current sim clock
+                        && !completed.Contains(p.ProcessID) //make sure it has not been added to the completed set
+                        && remainBurstTimes[p.ProcessID] > 0) //make sure it has a burst time
+                    .OrderBy(p => remainBurstTimes[p.ProcessID]) //Sort by Burst value
+                    .ThenBy(p => p.ArrivalTime) //arrival time
+                    .ThenBy(p => p.ProcessID) //and process id
+                    .ToList(); //lastly create a list
+                
+                //if the list created above is empty increase the sim clock and start loop over
+                if(availProcesses.Count == 0)
+                {
+                    currTime++;
+                    continue;
+                }
+
+                var currProcess = availProcesses.First(); //pop the first value from list which is shortest remaining time
+                var result = processResults[currProcess.ProcessID]; //optain process records
+
+                //if the process has not been started yet set it to currTime.
+                if(result.StartTime == -1)
+                {
+                    result.StartTime = currTime;
+                }
+
+                //reduce remaining burst time of the current process and increase sim clock
+                remainBurstTimes[currProcess.ProcessID]--;
+                currTime++;
+
+                //if the current process has expended it's burst time finish process.
+                //Set all important values in the SchedulingResult of the process.
+                if(remainBurstTimes[currProcess.ProcessID] == 0)
+                {
+                    result.FinishTime = currTime;
+                    result.TurnaroundTime = result.FinishTime - result.ArrivalTime;
+                    result.WaitingTime = result.TurnaroundTime - result.BurstTime;
+
+                    completed.Add(currProcess.ProcessID);
+                    completedCount++;
+                }
+
+            }
+            
+            //return list of results
+            return processResults.Values
+                .OrderBy(r => r.StartTime)
+                .ToList();            
         }
 
         /// <summary>
@@ -930,6 +1031,37 @@ Instructions:
             }
         }
 
+        //TODO: Button Click for the SRTF Algo, Maybe turn the event handler into a switch
+        /// <summary>
+        /// Executes the Shortest Remaining Time First Algo.
+        /// This is just copied from the previous event handlers
+        /// I only added the new algo.
+        /// </summary>
+        private void SRTFButton_Click(object sender, EventArgs e)
+        {
+            var processData = GetProcessDataFromGrid();
+
+            if(processData.Count > 0)
+            {
+                var results = RunSRTFAlgorithm(processData);
+
+                DisplaySchedulingResults(results, "SRTF - Shortest Remaining Time First");
+
+                ShowPanel(resultsPanel);
+                sidePanel.Height = btnDashBoard.Height;
+                sidePanel.Top = btnDashBoard.Top;
+            }
+            else
+            {
+                MessageBox.Show("Please set process count and ensure the data grid has process data.",
+                    "No Process Data",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+
+                txtProcess.Focus();
+            }
+        }
+
         /// <summary>
         /// Occurs when the process count text changes.
         /// </summary>
@@ -1005,6 +1137,7 @@ Instructions:
             ApplyRoundedCorners(btnSJF);
             ApplyRoundedCorners(btnPriority);
             ApplyRoundedCorners(btnRoundRobin);
+            ApplyRoundedCorners(btnSRTF);
             ApplyRoundedCorners(btnDarkModeToggle);
             
             // Apply default dark theme
@@ -1124,6 +1257,7 @@ Instructions:
             ApplyDarkThemeToSchedulerButton(btnLoadData);
             ApplyDarkThemeToSchedulerButton(btnFCFS);
             ApplyDarkThemeToSchedulerButton(btnSJF);
+            ApplyDarkThemeToSchedulerButton(btnSRTF);
             ApplyDarkThemeToSchedulerButton(btnPriority);
             ApplyDarkThemeToSchedulerButton(btnRoundRobin);
         }

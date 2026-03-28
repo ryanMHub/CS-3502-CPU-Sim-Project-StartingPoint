@@ -2,7 +2,7 @@
 
 This project provides a Windows Forms application that demonstrates common CPU scheduling algorithms through an interactive graphical interface. Each algorithm prompts for basic input and displays the resulting waiting or turnaround times using message boxes and on-screen tables.
 
-**Fork maintained by Chris Regan** - Original creator: Francis (used with permission)
+**Fork maintained by Ryan Moskovciak** Forked From Chris Regan - Original creator: Francis (used with permission)
 
 ## Project status
 
