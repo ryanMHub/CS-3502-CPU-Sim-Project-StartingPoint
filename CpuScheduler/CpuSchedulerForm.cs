@@ -5,7 +5,10 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Windows.Forms;
+using Microsoft.VisualBasic;
 
 namespace CpuScheduler
 {
@@ -563,6 +566,179 @@ Instructions:
                 .ToList();            
         }
 
+        //TODO: This is the first Algo I added
+        /// <summary>
+        /// Professor: The implementation below represents a 3 - level Multi-levl Feedback Queue (MLFQ)
+        /// algorithm. This algorithm essential combines two of the algrithms we started with. One queue will
+        /// represent the Roud Robin at a quantum of 2, a Round Robin with the quantum of 4, and an FCFS style
+        /// which will run to completion.
+        /// </summary>
+        private List<SchedulingResult> RunMLFQAlgoritm(List<ProcessData> processes)
+        {
+            var processResults = new Dictionary<string, SchedulingResult>(); //store the scheduling results for each process
+            var remainBurstTime = new Dictionary<string, int>(); //Stores the remaing burst time for each process
+            var completedProcesses = new HashSet<string>(); //Stores all process that have completed their burst
+            var enqueuedProcesses = new HashSet<string>(); //Helps prevent repeated addition to initial queue
+
+            Queue<ProcessData> RR1 = new(); //quick response for new jobs
+            Queue<ProcessData> RR2 = new(); //for longer jobs that didn't finish
+            Queue<ProcessData> FCFS = new(); //low priority, CPU heavy tasks
+
+            //SEt quantum values
+            const int q1Quant = 2;
+            const int q2Quant = 4;
+
+            //set timers and clocks
+            int currTime = 0; //simulated cpu clock
+            int completedCount = 0; //count of process completed
+            int totalProcesses = processes.Count; //Starting quantity of processes
+
+            foreach(var process in processes)
+            {
+                remainBurstTime[process.ProcessID] = process.BurstTime; //initialize each process
+
+                //initialize scheduling result details
+                processResults[process.ProcessID] = new SchedulingResult
+                {
+                    ProcessID = process.ProcessID,
+                    ArrivalTime = process.ArrivalTime,
+                    BurstTime = process.BurstTime,
+                    StartTime = -1,
+                    FinishTime = 0,
+                    WaitingTime = 0,
+                    TurnaroundTime = 0
+                };
+            }
+
+            //start the time based on the earliest arrival time
+            if(processes.Count > 0)
+            {
+                currTime = processes.Min(p => p.ArrivalTime);                
+            }
+
+            while(completedCount < totalProcesses)
+            {
+                //Each new item must be added to RR1 to start
+                foreach(var process in processes
+                    .Where(p => p.ArrivalTime <= currTime
+                        && !completedProcesses.Contains(p.ProcessID) //make sure it is not already completed
+                        && !enqueuedProcesses.Contains(p.ProcessID))) //make sure it has not already been added to RR1
+                {
+                    RR1.Enqueue(process);
+                    enqueuedProcesses.Add(process.ProcessID);
+                }
+
+                //Check if all queues are empty
+                if(RR1.Count == 0 && RR2.Count == 0 && FCFS.Count == 0)
+                {
+                    //Skip to the next available time slot
+                    var next = processes
+                        .Where(p => !completedProcesses.Contains(p.ProcessID)
+                            && !enqueuedProcesses.Contains(p.ProcessID))
+                        .Min(p => p.ArrivalTime); //minimum available time slot that has not already been pulled from the dataset
+                    currTime = next; //jump the time simulator
+                    continue;
+                }
+
+                ProcessData currentProcess; //current process working
+                SchedulingResult result; //The scheduling result for the current process
+                int timeSlice;  //time alloted for the process to run during this pass
+                int currentLevel;  //The queue level the process came from
+
+                //Starting with the highest priority process. Begin with
+                //RR1 and work your way down. Which ever queue is the first 
+                //available process will set the process, level, and timeSlice allotted
+                if(RR1.Count > 0)
+                {
+                    currentProcess = RR1.Dequeue();
+                    currentLevel = 1;
+                    timeSlice = q1Quant;
+                } 
+                else if (RR2.Count > 0)
+                {
+                    currentProcess = RR2.Dequeue();
+                    currentLevel = 2;
+                    timeSlice = q2Quant;    
+                } 
+                else
+                {
+                    currentProcess = FCFS.Dequeue();
+                    currentLevel = 3;
+                    timeSlice = remainBurstTime[currentProcess.ProcessID];
+                }
+
+                //call for the processResults record for the current process
+                result = processResults[currentProcess.ProcessID];
+
+                //if this is the first time the process has been seen
+                //set StartTime to the current time.
+                if(result.StartTime == -1)
+                {
+                    result.StartTime = currTime;
+                }
+                
+                //Determine the amount of time that the process will run for this turn
+                int exeTime = Math.Min(timeSlice, remainBurstTime[currentProcess.ProcessID]);
+
+                //Run the cycle for the process
+                for( ; 0 < exeTime; exeTime--)
+                {
+                    remainBurstTime[currentProcess.ProcessID]--; //reduce the process burst time
+                    currTime++; //increase sim clock
+
+                    //Add all new process that arrived during the clock cycle
+                    foreach(var process in processes
+                        .Where(p => p.ArrivalTime <= currTime
+                            && !completedProcesses.Contains(p.ProcessID)
+                            && !enqueuedProcesses.Contains(p.ProcessID)))
+                    {
+                        RR1.Enqueue(process);
+                        enqueuedProcesses.Add(process.ProcessID);
+                    }
+
+                    //if the current process's burst time has been expended break loop
+                    if(remainBurstTime[currentProcess.ProcessID] == 0)
+                    {
+                        break;
+                    }
+
+                    if(currentLevel > 1 && RR1.Count > 0)
+                    {
+                        break;
+                    }
+                }
+
+                //if process completed set finished time
+                if(remainBurstTime[currentProcess.ProcessID] == 0)
+                {
+                    result.FinishTime = currTime;
+                    result.TurnaroundTime = result.FinishTime - result.ArrivalTime;
+                    result.WaitingTime = result.TurnaroundTime - result.BurstTime;
+
+                    completedProcesses.Add(currentProcess.ProcessID);
+                    completedCount++;
+                    continue;
+                }
+
+                //If the process has not finished rerack it or demote it
+                if(currentLevel == 1)
+                {
+                    RR2.Enqueue(currentProcess);
+                } 
+                else if (currentLevel == 2 && exeTime > 0)
+                {
+                    RR2.Enqueue(currentProcess);    
+                }
+                else
+                {
+                    FCFS.Enqueue(currentProcess);
+                }
+            }
+
+            //return the list of SchedulingResults
+            return [.. processResults.Values.OrderBy(r => r.StartTime)];            
+        }
+
         /// <summary>
         /// STUDENTS: Data structure for algorithm results
         /// Use this to store and display scheduling algorithm outcomes
@@ -607,20 +783,7 @@ Instructions:
                 item.SubItems.Add(result.WaitingTime.ToString());
                 item.SubItems.Add(result.TurnaroundTime.ToString());
                 listView1.Items.Add(item);
-            }
-            
-            // Add summary statistics
-            var avgWaiting = results.Average(r => r.WaitingTime);
-            var avgTurnaround = results.Average(r => r.TurnaroundTime);
-            
-            var summaryItem = new ListViewItem("SUMMARY");
-            summaryItem.SubItems.Add(algorithmName);
-            summaryItem.SubItems.Add($"{results.Count} processes");
-            summaryItem.SubItems.Add($"Avg Wait: {avgWaiting:F1}");
-            summaryItem.SubItems.Add($"Avg Turn: {avgTurnaround:F1}");
-            summaryItem.SubItems.Add("");
-            summaryItem.SubItems.Add("");
-            listView1.Items.Add(summaryItem);
+            }                     
 
             // TODO: STUDENTS - Add performance metrics calculation and display here
             // Required metrics for your project report:
@@ -630,6 +793,29 @@ Instructions:
             // 4. Throughput (processes/second) - number of processes / total time
             // 5. Response Time (RT) [Optional] - time from arrival to first execution
             // Display these metrics in the results view for comparison between algorithms
+
+             // Add summary statistics
+            var avgWaiting = results.Average(r => r.WaitingTime);
+            var avgTurnaround = results.Average(r => r.TurnaroundTime);
+            
+            //Calculate CPU Utilization
+            int firstArrival = results.Min(r => r.ArrivalTime);
+            int lastFinish = results.Max(r => r.FinishTime);
+            int totalTime = lastFinish - firstArrival;
+            int totalBurst = results.Sum(r => r.BurstTime);
+            double cpuUtiliaztion = totalTime > 0 ? (double)totalBurst / totalTime * 100 : 0;
+
+            //Calculate Throughput
+            double throughput = totalTime > 0 ? (double)results.Count / totalTime : 0;
+            
+            var summaryItem = new ListViewItem("SUMMARY");
+            summaryItem.SubItems.Add(algorithmName);
+            summaryItem.SubItems.Add($"{results.Count} processes");
+            summaryItem.SubItems.Add($"Avg Wait: {avgWaiting:F1}");
+            summaryItem.SubItems.Add($"Avg Turn: {avgTurnaround:F1}");
+            summaryItem.SubItems.Add($"CPU Utilization: {cpuUtiliaztion:F1}%");
+            summaryItem.SubItems.Add($"Throughput");
+            listView1.Items.Add(summaryItem);
             
             // TODO: STUDENTS - Add CSV export functionality for results data
             // Create a "Export Results" button in the results panel to save:
@@ -1062,6 +1248,37 @@ Instructions:
             }
         }
 
+        //TODO: Button Click for the MLFQ Algo, Maybe turn the event handler into a switch
+        /// <summary>
+        /// Executes the Shortest Remaining Time First Algo.
+        /// This is just copied from the previous event handlers
+        /// I only added the new algo.
+        /// </summary>
+        private void MLFQButton_Click(object sender, EventArgs e)
+        {
+            var processData = GetProcessDataFromGrid();
+
+            if(processData.Count > 0)
+            {
+                var results = RunMLFQAlgoritm(processData);
+
+                DisplaySchedulingResults(results, "MLFQ - Multi-Level Feedback Queue");
+
+                ShowPanel(resultsPanel);
+                sidePanel.Height = btnDashBoard.Height;
+                sidePanel.Top = btnDashBoard.Top;
+            }
+            else
+            {
+                MessageBox.Show("Please set process count and ensure the data grid has process data.",
+                    "No Process Data",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                
+                txtProcess.Focus();
+            }
+        }
+
         /// <summary>
         /// Occurs when the process count text changes.
         /// </summary>
@@ -1138,6 +1355,7 @@ Instructions:
             ApplyRoundedCorners(btnPriority);
             ApplyRoundedCorners(btnRoundRobin);
             ApplyRoundedCorners(btnSRTF);
+            ApplyRoundedCorners(btnMLFQ);
             ApplyRoundedCorners(btnDarkModeToggle);
             
             // Apply default dark theme
@@ -1258,6 +1476,7 @@ Instructions:
             ApplyDarkThemeToSchedulerButton(btnFCFS);
             ApplyDarkThemeToSchedulerButton(btnSJF);
             ApplyDarkThemeToSchedulerButton(btnSRTF);
+            ApplyDarkThemeToSchedulerButton(btnMLFQ);
             ApplyDarkThemeToSchedulerButton(btnPriority);
             ApplyDarkThemeToSchedulerButton(btnRoundRobin);
         }
