@@ -26,6 +26,11 @@ namespace CpuScheduler
         private const int MAX_PROCESS_COUNT = 100;
         private const int DEFAULT_PROCESS_COUNT = 3;
 
+        //TODO: fields for result export
+        private List<SchedulingResult> lastDisplayedResults = new List<SchedulingResult>();
+        private string lastDisplayedAlgorithmName = "";
+        private double[] metrics = new double[9];
+
         /// <summary>
         /// Initializes a new instance of the <see cref="CpuSchedulerForm"/> class.
         /// </summary>
@@ -760,6 +765,10 @@ Instructions:
         /// </summary>
         private void DisplaySchedulingResults(List<SchedulingResult> results, string algorithmName)
         {
+            //save the results data and the name of algorithm
+            lastDisplayedAlgorithmName = algorithmName;
+            lastDisplayedResults = results;
+
             listView1.Clear();
             listView1.View = View.Details;
 
@@ -795,34 +804,113 @@ Instructions:
             // Display these metrics in the results view for comparison between algorithms
 
              // Add summary statistics
-            var avgWaiting = results.Average(r => r.WaitingTime);
-            var avgTurnaround = results.Average(r => r.TurnaroundTime);
+            metrics[0] = results.Average(r => r.WaitingTime);
+            metrics[1] = results.Average(r => r.TurnaroundTime);
             
             //Calculate CPU Utilization
-            int firstArrival = results.Min(r => r.ArrivalTime);
-            int lastFinish = results.Max(r => r.FinishTime);
-            int totalTime = lastFinish - firstArrival;
-            int totalBurst = results.Sum(r => r.BurstTime);
-            double cpuUtiliaztion = totalTime > 0 ? (double)totalBurst / totalTime * 100 : 0;
+            metrics[5] = results.Min(r => r.ArrivalTime); //firstFinish
+            metrics[6] = results.Max(r => r.FinishTime); //lastfinish
+            metrics[7] = metrics[6] - metrics[5]; //lastFinish - firstFinish = totaltime
+            metrics[8] = results.Sum(r => r.BurstTime); //totalBurst
+            metrics[2] = metrics[7] > 0 ? (double)metrics[8] / metrics[7] * 100 : 0; //CPU utilization
 
             //Calculate Throughput
-            double throughput = totalTime > 0 ? (double)results.Count / totalTime : 0;
+            metrics[3] = metrics[7] > 0 ? (double)results.Count / metrics[7] : 0;
+
+            //Calculate Average Response Time
+            metrics[4] = results.Average(r => r.StartTime - r.ArrivalTime);
             
             var summaryItem = new ListViewItem("SUMMARY");
             summaryItem.SubItems.Add(algorithmName);
             summaryItem.SubItems.Add($"{results.Count} processes");
-            summaryItem.SubItems.Add($"Avg Wait: {avgWaiting:F1}");
-            summaryItem.SubItems.Add($"Avg Turn: {avgTurnaround:F1}");
-            summaryItem.SubItems.Add($"CPU Utilization: {cpuUtiliaztion:F1}%");
-            summaryItem.SubItems.Add($"Throughput");
-            listView1.Items.Add(summaryItem);
-            
-            // TODO: STUDENTS - Add CSV export functionality for results data
-            // Create a "Export Results" button in the results panel to save:
-            // - Individual process results (what's shown in listView1)
-            // - Performance metrics summary for each algorithm tested
-            // Reference the SaveData_Click() method above to learn CSV file handling
-            // This will help you create tables/charts for your project report
+            summaryItem.SubItems.Add($"Avg Wait: {metrics[0]:F1}");
+            summaryItem.SubItems.Add($"Avg Turn: {metrics[1]:F1}");
+            summaryItem.SubItems.Add($"CPU Utilization: {metrics[2]:F1}%");
+            summaryItem.SubItems.Add($"Throughput: {metrics[3]:F3} proccesor/unit");
+            summaryItem.SubItems.Add($"Response Time: {metrics[4]:F1}");
+            listView1.Items.Add(summaryItem);                        
+        }
+
+        // TODO: STUDENTS - Add CSV export functionality for results data
+        // Create a "Export Results" button in the results panel to save:
+        // - Individual process results (what's shown in listView1)
+        // - Performance metrics summary for each algorithm tested
+        // Reference the SaveData_Click() method above to learn CSV file handling
+        // This will help you create tables/charts for your project report
+
+        /// <summary>
+        /// Professor: Saves SchedulingResults data and benchmark results to CSV file for external editing or backup
+        /// This allows you to prepare result data in Excel/CSV editors
+        /// </summary>
+        private void ResultData_Click(object sender, EventArgs e)
+        {
+            if (processTable.Rows.Count == 0)
+            {
+                MessageBox.Show("No result data to export. Please run an algo first.", 
+                    "No REsults", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var saveDialog = new SaveFileDialog())
+            {
+                saveDialog.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*";
+                saveDialog.DefaultExt = "csv";
+                saveDialog.FileName = $"{lastDisplayedAlgorithmName.Replace(" ", "_")}_Results.csv";
+                saveDialog.Title = "Export Scheduling Results";
+
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        using (var writer = new System.IO.StreamWriter(saveDialog.FileName))
+                        {
+
+                            //write algo name
+                            writer.WriteLine("Algorithm: " + lastDisplayedAlgorithmName);
+                            writer.WriteLine();
+
+                            // Write header
+                            writer.WriteLine("Process ID,Arrival,Burst,Start,Finish,Waiting,Turnaround");
+                            
+                            // Write data rows
+                            foreach (var result in lastDisplayedResults)
+                            {
+                                writer.WriteLine(
+                                    $"{result.ProcessID}," +
+                                    $"{result.ArrivalTime}," +
+                                    $"{result.BurstTime}," +
+                                    $"{result.StartTime}," +
+                                    $"{result.FinishTime}," +
+                                    $"{result.WaitingTime}," +
+                                    $"{result.TurnaroundTime}");
+                            }
+
+                            writer.WriteLine();
+
+                            //writer metrics to file
+                            writer.WriteLine("Metric,Value");
+                            writer.WriteLine($"Process Count,{lastDisplayedResults.Count}");
+                            writer.WriteLine($"Average Waiting Time,{metrics[0]:F2}");
+                            writer.WriteLine($"Average Turnaround Time,{metrics[1]:F2}");
+                            writer.WriteLine($"CPU Utilization (%),{metrics[2]:F2}");
+                            writer.WriteLine($"Throughput (processes/unit),{metrics[3]:F4}");
+                            writer.WriteLine($"Average Response Time,{metrics[4]:F2}");
+                            writer.WriteLine($"First Arrival Time,{metrics[5]}");
+                            writer.WriteLine($"Last Finish Time,{metrics[6]}");
+                            writer.WriteLine($"Total Elapsed Time,{metrics[7]}");
+                            writer.WriteLine($"Total Burst Time,{metrics[8]}");
+                        }
+                        
+                        MessageBox.Show($"Results exported successfully to:\n{saveDialog.FileName}", 
+                            "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error saving file: {ex.Message}", 
+                            "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
         }
 
         /// <summary>

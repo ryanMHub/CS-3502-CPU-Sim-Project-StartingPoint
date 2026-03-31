@@ -64,6 +64,10 @@
             //TODO: Added new buttons for algos
             this.btnSRTF = new System.Windows.Forms.Button(); 
             this.btnMLFQ = new System.Windows.Forms.Button();
+            this.btnExportResults = new System.Windows.Forms.Button();
+
+
+
             this.txtProcess = new System.Windows.Forms.TextBox();
             this.labelProcess = new System.Windows.Forms.Label();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
@@ -268,6 +272,7 @@
             // 
             this.resultsPanel.BackColor = System.Drawing.SystemColors.Control;
             this.resultsPanel.Controls.Add(this.listView1);
+            this.resultsPanel.Controls.Add(this.btnExportResults);
             this.resultsPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.resultsPanel.Location = new System.Drawing.Point(0, 0);
             this.resultsPanel.Name = "resultsPanel";
@@ -287,9 +292,9 @@
             this.listView1.FullRowSelect = true;
             this.listView1.GridLines = true;
             this.listView1.HideSelection = false;
-            this.listView1.Location = new System.Drawing.Point(10, 10);
+            this.listView1.Location = new System.Drawing.Point(10, 50);
             this.listView1.Name = "listView1";
-            this.listView1.Size = new System.Drawing.Size(700, 570);
+            this.listView1.Size = new System.Drawing.Size(700, 530);
             this.listView1.TabIndex = 10;
             this.listView1.UseCompatibleStateImageBehavior = false;
             this.listView1.View = System.Windows.Forms.View.Details;
@@ -513,6 +518,8 @@
             this.btnFCFS.Text = "FCFS";
             this.btnFCFS.UseVisualStyleBackColor = false;
             this.btnFCFS.Click += new System.EventHandler(this.FirstComeFirstServeButton_Click);
+
+            //TODO: This is where my buttons start
             // 
             // btnSRTF
             // 
@@ -545,7 +552,18 @@
             this.btnMLFQ.Text = "MLFQ";
             this.btnMLFQ.UseVisualStyleBackColor = false;
             this.btnMLFQ.Click += new System.EventHandler(this.MLFQButton_Click);
-
+            //
+            //btnExportResults
+            //
+            this.btnExportResults.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnExportResults.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnExportResults.Location = new System.Drawing.Point(590, 10);
+            this.btnExportResults.Name = "btnExportResults";
+            this.btnExportResults.Size = new System.Drawing.Size(120, 30);
+            this.btnExportResults.TabIndex = 11;
+            this.btnExportResults.Text = "Export Results";
+            this.btnExportResults.UseVisualStyleBackColor = true;
+            this.btnExportResults.Click += new System.EventHandler(this.ResultData_Click);
 
 
             // 
@@ -653,6 +671,8 @@
         //TODO: New buttons for Algos
         private System.Windows.Forms.Button btnSRTF;
         private System.Windows.Forms.Button btnMLFQ;
+        //Adding the export results UI
+        private System.Windows.Forms.Button btnExportResults;
 
 
 
