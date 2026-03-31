@@ -23,7 +23,7 @@ namespace CpuScheduler
         
         // STUDENTS: Configure these limits based on your algorithm performance requirements
         private const int MIN_PROCESS_COUNT = 1;
-        private const int MAX_PROCESS_COUNT = 120;
+        private const int MAX_PROCESS_COUNT = 200;
         private const int DEFAULT_PROCESS_COUNT = 3;
 
         //TODO: fields for result export
