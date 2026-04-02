@@ -780,6 +780,7 @@ Instructions:
             listView1.Columns.Add("Finish", 80, HorizontalAlignment.Center);
             listView1.Columns.Add("Waiting", 80, HorizontalAlignment.Center);
             listView1.Columns.Add("Turnaround", 90, HorizontalAlignment.Center);
+            listView1.Columns.Add("", 90, HorizontalAlignment.Center);
 
             // Add process results
             foreach (var result in results)

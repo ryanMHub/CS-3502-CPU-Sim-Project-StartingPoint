@@ -1,6 +1,6 @@
 # CPU-Simulator using Windows Forms
 
-This project provides a Windows Forms application that demonstrates common CPU scheduling algorithms through an interactive graphical interface. Each algorithm prompts for basic input and displays the resulting waiting or turnaround times using message boxes and on-screen tables.
+This project provides a Windows Forms application that demonstrates common CPU scheduling algorithms through an interactive graphical interface. Each algorithm prompts for basic input and displays the resulting waiting or turnaround times using message boxes and on-screen tables. Additionally metrics are displayed for Average Waiting Time, Average Turnaround Time, CPU Utilization, Throughput, and Response Time. As well as the ability to export the results in a csv file.
 
 **Fork maintained by Ryan Moskovciak** Forked From Chris Regan - Original creator: Francis (used with permission)
 
@@ -10,12 +10,14 @@ The simulator is functional but still a work in progress. Currently the followin
 
 | Algorithm | Method | Notes |
 |-----------|--------|-------|
-| First Come First Serve | `Algorithms.RunFirstComeFirstServe` | Processes are executed in order of arrival. |
-| Shortest Job First | `Algorithms.RunShortestJobFirst` | Jobs are sorted by burst time before execution. |
-| Priority Scheduling | `Algorithms.RunPriorityScheduling` | User supplies a priority value for each job. |
-| Round Robin | `Algorithms.RunRoundRobin` | Requires a quantum time parameter. |
+| First Come First Serve | `RunFirstComeFirstServe` | Processes are executed in order of arrival. |
+| Shortest Job First | `RunShortestJobFirst` | Jobs are sorted by burst time before execution. |
+| Priority Scheduling | `RunPriorityScheduling` | User supplies a priority value for each job. |
+| Round Robin | `RunRoundRobin` | Requires a quantum time parameter. |
+| Shortest Remaining TIme First | `RunSRTFAlgorithm` | Processes are executed based on shortest burst remaining. If new arrivals are short they are executed.
+| Multi-Level Feedback Queue | `RunMLFQAlgoritm` | Processes are added to a primary priority queue on arrival. The processes are demoted based on completion of time slice until burst time has been completed.
 
-Additional algorithms can easily be added by extending `Algorithms.cs`.
+**The initial creater used an Algorithm.cs to build the algorithms. However the newest version that I forked did not utilize the Algorithm.cs and implemented the algorithms directly in CpuSchedulerForm.cs
 
 ## Requirements
 
@@ -30,7 +32,7 @@ Additional algorithms can easily be added by extending `Algorithms.cs`.
 1. Clone the repository:
 
    ```bash
-   git clone git@github.com:iAmGiG/CS-3502-CPU-Sim-Project-StartingPoint.git
+   git clone git@github.com:ryanMHub/CS-3502-CPU-Sim-Project-StartingPoint.git
    ```
 
 2. Open `CpuScheduler.sln` in Visual Studio 2022
@@ -41,7 +43,7 @@ Additional algorithms can easily be added by extending `Algorithms.cs`.
 1. Clone the repository:
 
    ```bash
-   git clone git@github.com:iAmGiG/CS-3502-CPU-Sim-Project-StartingPoint.git
+   git clone git@github.com:ryanMHub/CS-3502-CPU-Sim-Project-StartingPoint.git
    ```
 
 2. Install the C# Dev Kit extension in VS Code
